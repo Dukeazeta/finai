@@ -1,6 +1,7 @@
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import { appendMessages, getConversation } from "@/server/ai/chat-store";
+import { appendMessages, ensureConversation } from "@/server/ai/chat-store";
+import { errorMessage } from "@/server/finance/errors";
 import { getSession } from "@/server/session";
 
 const body = z.object({
@@ -23,8 +24,12 @@ export async function POST(req: Request) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Bad request." }, { status: 400 });
 
-  const conversation = await getConversation(session.user.id, parsed.data.conversationId);
-  if (!conversation) return Response.json({ error: "Not found." }, { status: 404 });
+  let conversation;
+  try {
+    conversation = await ensureConversation(session.user.id, parsed.data.conversationId, "Voice session");
+  } catch (e) {
+    return Response.json({ error: errorMessage(e) }, { status: 400 });
+  }
 
   const msgs: UIMessage[] = parsed.data.turns
     .filter((t) => t.text.trim())

@@ -32,7 +32,7 @@ export function TxList({ rows }: { rows: TxRowData[] }) {
 
   return (
     <div>
-      <div className="sticky top-[72px] z-10 flex min-h-12 flex-wrap items-center gap-3 bg-white py-2">
+      <div className="sticky top-16 z-10 md:top-[72px] flex min-h-12 flex-wrap items-center gap-3 bg-white py-2">
         <label className="flex items-center gap-2 text-[14px]">
           <input
             type="checkbox"

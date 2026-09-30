@@ -1,14 +1,33 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LinkPending } from "@/components/ui/link-pending";
 import { cn } from "@/lib/cn";
 import { PERIOD_LABELS, type Period } from "@/lib/dates";
 
-export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  compact,
+}: {
+  title: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+  /** Smaller greeting-style heading for pages where the content should start high, like the dashboard. */
+  compact?: boolean;
+}) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-[clamp(2.5rem,5vw,3.75rem)] leading-[1] font-medium tracking-[-0.03em]">{title}</h1>
-        {description && <p className="mt-3 text-[16px] text-graphite">{description}</p>}
+        <h1
+          className={cn(
+            "font-medium tracking-[-0.03em]",
+            compact ? "text-[clamp(1.75rem,3.2vw,2.5rem)] leading-[1.05]" : "text-[clamp(2.5rem,5vw,3.75rem)] leading-[1]",
+          )}
+        >
+          {title}
+        </h1>
+        {description && <p className={cn("text-graphite", compact ? "mt-1.5 text-[15px]" : "mt-3 text-[16px]")}>{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -31,6 +50,7 @@ export function PeriodTabs({ current, basePath, extra }: { current: Period; base
               className={cn("rounded-full px-4 py-2 text-[14px] whitespace-nowrap transition-colors", p === current ? "bg-lime font-medium" : "hover:bg-white")}
             >
               {PERIOD_LABELS[p]}
+              <LinkPending />
             </Link>
           );
         })}

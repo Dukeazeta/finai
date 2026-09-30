@@ -38,6 +38,8 @@ export const auth = betterAuth({
         },
       }
     : undefined,
+  // Signed cookie cache: most requests skip the session lookup in the database.
+  session: { cookieCache: { enabled: true, maxAge: 5 * 60 } },
   account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
   databaseHooks: {
     user: {

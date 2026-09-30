@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ChatThread } from "@/components/chat/chat-thread";
+import { LinkPending } from "@/components/ui/link-pending";
 import { cn } from "@/lib/cn";
 import { deleteChat } from "@/server/actions";
 
@@ -42,6 +43,7 @@ export function ChatView({ id, initialMessages, conversations }: { id: string; i
                   >
                     {c.voice && <AudioLines className="size-3.5 shrink-0" strokeWidth={1.75} aria-label="Voice" />}
                     <span className="truncate">{c.title}</span>
+                    <LinkPending />
                   </Link>
                   <button
                     type="button"

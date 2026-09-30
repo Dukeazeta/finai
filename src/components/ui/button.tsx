@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { forwardRef, type ComponentProps } from "react";
 import { cn } from "@/lib/cn";
+import { LinkPending } from "./link-pending";
 
 type Variant = "primary" | "outline" | "ghost" | "dark" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -59,6 +60,7 @@ export function ArrowLink({ className, children, ...rest }: ComponentProps<typeo
     <Link className={cn("group inline-flex items-center gap-1 text-[14px] font-medium text-ink", className)} {...rest}>
       <span className="border-b border-ink pb-px">{children}</span>
       <ChevronRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={1.75} aria-hidden />
+      <LinkPending />
     </Link>
   );
 }

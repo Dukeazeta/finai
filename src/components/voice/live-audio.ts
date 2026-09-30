@@ -21,11 +21,23 @@ export class MicCapture {
   muted = false;
 
   async start(onChunk: (b64: string) => void, onLevel: (level: number) => void) {
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
+    // The permission prompt and the worklet load don't depend on each other.
     this.ctx = new AudioContext();
-    await this.ctx.audioWorklet.addModule("/worklets/pcm-capture.js");
+    const [stream] = await Promise.all([
+      navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      }),
+      this.ctx.audioWorklet.addModule("/worklets/pcm-capture.js"),
+    ]).catch((e: unknown) => {
+      this.stop();
+      throw e;
+    });
+    if (!this.ctx) {
+      // Voice closed while the permission prompt was open; release the mic straight away.
+      stream.getTracks().forEach((t) => t.stop());
+      throw new DOMException("Stopped", "AbortError");
+    }
+    this.stream = stream;
     const src = this.ctx.createMediaStreamSource(this.stream);
     this.node = new AudioWorkletNode(this.ctx, "pcm-capture");
     this.node.port.onmessage = (e: MessageEvent<{ pcm?: ArrayBuffer; level: number }>) => {

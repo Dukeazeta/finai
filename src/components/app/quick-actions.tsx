@@ -2,6 +2,7 @@
 
 import { MessageCircle, Mic, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { prefetchVoice } from "@/components/voice/voice-prefetch";
 import { useApp } from "./app-context";
 
 /** The three ways to log. On a lime surface the filled button turns ink, since lime is already the ground. */
@@ -13,7 +14,7 @@ export function QuickActions({ onLime }: { onLime?: boolean }) {
         <MessageCircle className="size-[18px]" strokeWidth={1.75} aria-hidden />
         Tell FinAI
       </Button>
-      <Button variant="outline" onClick={() => setVoiceOpen(true)}>
+      <Button variant="outline" onClick={() => setVoiceOpen(true)} onPointerEnter={prefetchVoice} onFocus={prefetchVoice}>
         <Mic className="size-[18px]" strokeWidth={1.75} aria-hidden />
         Say it
       </Button>

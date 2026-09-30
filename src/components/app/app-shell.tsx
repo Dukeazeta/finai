@@ -1,26 +1,28 @@
 "use client";
 
 import {
-  ArrowLeftRight,
   CalendarClock,
-  LayoutGrid,
+  House,
   LogOut,
+  Menu,
   MessageCircle,
   Mic,
-  MoreHorizontal,
+  PiggyBank,
   Plus,
+  ReceiptText,
   Settings,
   Shapes,
-  Target,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { LinkPending } from "@/components/ui/link-pending";
 import { VoiceOverlay } from "@/components/voice/voice-overlay";
+import { dropVoiceToken, prefetchVoice } from "@/components/voice/voice-prefetch";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { useApp } from "./app-context";
@@ -30,10 +32,10 @@ import { TransactionFormSheet } from "./transaction-form";
 type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean };
 
 const PRIMARY: NavItem[] = [
-  { href: "/app", label: "Dashboard", icon: LayoutGrid, exact: true },
+  { href: "/app", label: "Dashboard", icon: House, exact: true },
   { href: "/app/chat", label: "Chat", icon: MessageCircle },
-  { href: "/app/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/app/budgets", label: "Budgets", icon: Target },
+  { href: "/app/transactions", label: "Transactions", icon: ReceiptText },
+  { href: "/app/budgets", label: "Budgets", icon: PiggyBank },
   { href: "/app/accounts", label: "Accounts", icon: Wallet },
 ];
 
@@ -47,11 +49,15 @@ function isActive(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+const MORE: NavItem = { href: "/app/more", label: "More", icon: Menu };
+const MOBILE: NavItem[] = [PRIMARY[0], PRIMARY[2], PRIMARY[1], PRIMARY[3], MORE];
+
+function NavLink({ item, pathname, onGo }: { item: NavItem; pathname: string; onGo: (href: string) => void }) {
   const active = isActive(pathname, item);
   return (
     <Link
       href={item.href}
+      onClick={() => onGo(item.href)}
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex h-11 items-center gap-3 rounded-full px-4 text-[15px] transition-colors",
@@ -60,15 +66,30 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
     >
       <item.icon className="size-[18px]" strokeWidth={1.5} aria-hidden />
       {item.label}
+      <LinkPending />
     </Link>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const realPath = usePathname();
   const router = useRouter();
-  const { user, openTxForm, setAskOpen, setVoiceOpen } = useApp();
-  const onChat = pathname.startsWith("/app/chat");
+  // The tapped tab lights up at once; the real path takes over when the page lands.
+  const [going, setGoing] = useState<{ from: string; to: string } | null>(null);
+  const pathname = going && going.from === realPath ? going.to : realPath;
+  const onGo = (href: string) => href !== realPath && setGoing({ from: realPath, to: href });
+  const { user, accounts, categories, openTxForm, setAskOpen, setVoiceOpen } = useApp();
+  const onChat = realPath.startsWith("/app/chat");
+
+  // Voice tokens carry the account and category lists, so mint a fresh one whenever those change.
+  const voiceKey = [...accounts, ...categories].map((x) => `${x.id}:${x.name}`).join("|");
+  useEffect(() => {
+    dropVoiceToken();
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = idle(() => prefetchVoice(), { timeout: 3000 });
+    return () => cancel(id);
+  }, [voiceKey]);
 
   async function signOut() {
     await authClient.signOut();
@@ -88,11 +109,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <nav aria-label="Main" className="flex flex-col gap-1">
           {PRIMARY.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} onGo={onGo} />
           ))}
           <p className="eyebrow mt-6 mb-2 px-4 text-graphite">Manage</p>
           {SECONDARY.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} onGo={onGo} />
           ))}
         </nav>
         <div className="mt-auto flex items-center gap-3 rounded-[18px] bg-parchment p-3">
@@ -110,7 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className={cn("flex min-w-0 flex-col rounded-[28px] bg-white", onChat ? "h-[calc(100dvh-16px)] md:h-[calc(100dvh-24px)]" : "min-h-[calc(100dvh-16px)] md:min-h-[calc(100dvh-24px)]")}>
-        <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-2 rounded-t-[28px] bg-white/95 px-4 backdrop-blur-sm md:px-8">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 rounded-t-[28px] bg-white/95 px-4 backdrop-blur-sm md:h-[72px] md:px-8">
           <Logo href="/app" className="md:hidden" />
           <div className="flex-1" />
           {!onChat && (
@@ -126,6 +147,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setVoiceOpen(true)}
+            onPointerEnter={prefetchVoice}
+            onFocus={prefetchVoice}
             className="inline-flex size-10 items-center justify-center rounded-full border border-ash transition-colors hover:border-ink"
             aria-label="Talk to FinAI"
           >
@@ -144,17 +167,39 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {!onChat && (
-        <nav aria-label="Main" className="fixed inset-x-2 bottom-2 z-30 grid grid-cols-5 rounded-[28px] border border-ash bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
-          {[PRIMARY[0], PRIMARY[2], PRIMARY[1], PRIMARY[3], { href: "/app/more", label: "More", icon: MoreHorizontal } as NavItem].map((item) => {
-            const active =
-              item.href === "/app/more" ? [...SECONDARY, PRIMARY[4]].some((s) => isActive(pathname, s)) || pathname === "/app/more" : isActive(pathname, item);
+        <nav
+          aria-label="Main"
+          className="fixed inset-x-3 bottom-3 z-30 flex h-[68px] items-center justify-around rounded-full border border-ash bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
+        >
+          {MOBILE.map((item) => {
+            const active = item === MORE ? [...SECONDARY, PRIMARY[4], MORE].some((s) => isActive(pathname, s)) : isActive(pathname, item);
             const isChat = item.href === "/app/chat";
+            const label = isChat ? "Ask FinAI" : item.label;
             return (
-              <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className="flex h-16 flex-col items-center justify-center gap-1 text-[11px]">
-                <span className={cn("inline-flex h-7 w-12 items-center justify-center rounded-full", (active || isChat) && "bg-lime")}>
-                  <item.icon className="size-5" strokeWidth={1.5} aria-hidden />
-                </span>
-                <span className={cn(active && "font-medium")}>{isChat ? "Ask" : item.label}</span>
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => onGo(item.href)}
+                aria-current={active ? "page" : undefined}
+                aria-label={label}
+                title={label}
+                className="flex h-full flex-1 items-center justify-center"
+              >
+                {isChat ? (
+                  <span className="inline-flex size-12 items-center justify-center rounded-full bg-ink text-lime transition-transform active:scale-95">
+                    <item.icon className="size-6" strokeWidth={1.75} aria-hidden />
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      "inline-flex h-11 w-14 items-center justify-center rounded-full transition-colors duration-200",
+                      active ? "bg-lime" : "text-graphite",
+                    )}
+                  >
+                    <item.icon className="size-6" strokeWidth={active ? 2 : 1.6} aria-hidden />
+                  </span>
+                )}
+                <LinkPending />
               </Link>
             );
           })}

@@ -284,3 +284,31 @@
     clip-path: none !important;
   }
 }
+
+/* Page loading bar, shown by <LinkPending>. It waits 120 ms so fast navigations don't flash,
+   then eases toward 85% and holds until the new page arrives. */
+@keyframes nav-progress {
+  0% { transform: scaleX(0); }
+  30% { transform: scaleX(0.45); }
+  100% { transform: scaleX(0.85); }
+}
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 3px;
+  background: var(--color-ink);
+  transform-origin: left;
+  transform: scaleX(0);
+  animation: nav-progress 6s cubic-bezier(0.1, 0.7, 0.2, 1) 120ms forwards;
+  pointer-events: none;
+}
+
+/* Loading placeholders: parchment blocks that breathe slowly. */
+@keyframes skeleton-breathe {
+  50% { opacity: 0.55; }
+}
+.skeleton {
+  background: var(--color-parchment);
+  animation: skeleton-breathe 1.6s ease-in-out infinite;
+}

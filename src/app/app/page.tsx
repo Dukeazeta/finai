@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BudgetMeterView } from "@/components/app/budget-meter";
 import { CashflowChart } from "@/components/app/cashflow-chart";
 import { Panel, PageHeader, PeriodTabs, parsePeriod } from "@/components/app/page-header";
@@ -6,6 +7,7 @@ import { AddButton, QuickActions } from "@/components/app/quick-actions";
 import { TxRow } from "@/components/app/tx-row";
 import { ArrowLink } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { LinkPending } from "@/components/ui/link-pending";
 import { Money } from "@/components/ui/money";
 import { localDateParts, PERIOD_LABELS, periodRange } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
@@ -62,8 +64,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="flex flex-col gap-3 px-4 pb-4 md:px-8">
-      <div className="flex flex-col gap-6 pt-4 pb-6">
-        <PageHeader title={`${greeting(tz)}${first ? `, ${first}` : ""}`} description={empty ? "Your books are open. Log the first thing that moved." : `${PERIOD_LABELS[period]} at a glance.`} />
+      <div className="flex flex-col gap-4 pt-1 pb-2 xl:flex-row xl:items-end xl:justify-between">
+        <PageHeader
+          compact
+          title={`${greeting(tz)}${first ? `, ${first}` : ""}`}
+          description={empty ? "Your books are open. Log the first thing that moved." : `${PERIOD_LABELS[period]} at a glance.`}
+        />
         <PeriodTabs current={period} basePath="/app" />
       </div>
 
@@ -110,7 +116,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <ul className="flex flex-col gap-4">
                   {spendTop.map((c) => (
                     <li key={c.categoryId ?? "none"}>
-                      <a
+                      <Link
                         href={c.categoryId ? `/app/transactions?category=${c.categoryId}&period=${period}` : `/app/transactions?period=${period}`}
                         className="group flex items-center gap-3"
                       >
@@ -124,7 +130,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                             <div className="h-full rounded-full bg-ink" style={{ width: `${Math.max(2, (c.totalMinor / spendMax) * 100)}%` }} />
                           </div>
                         </div>
-                      </a>
+                        <LinkPending />
+                      </Link>
                     </li>
                   ))}
                   {spendRest > 0 && (

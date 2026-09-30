@@ -2,6 +2,7 @@ import { CalendarClock, ChevronRight, Settings, Shapes, Wallet } from "lucide-re
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/app/page-header";
+import { LinkPending } from "@/components/ui/link-pending";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -28,6 +29,7 @@ export default function MorePage() {
                 <div className="text-[14px] text-graphite">{l.sub}</div>
               </div>
               <ChevronRight className="size-5" strokeWidth={1.75} aria-hidden />
+              <LinkPending />
             </Link>
           </li>
         ))}

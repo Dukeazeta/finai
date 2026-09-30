@@ -1,4 +1,4 @@
-import { getConversation } from "@/server/ai/chat-store";
+import { ensureConversation } from "@/server/ai/chat-store";
 import { runTool, WRITE_TOOLS } from "@/server/ai/tools";
 import { getSettings } from "@/server/finance/settings";
 import { getSession } from "@/server/session";
@@ -12,8 +12,10 @@ export async function POST(req: Request) {
   if (!body?.name) return Response.json({ error: "Bad request." }, { status: 400 });
 
   const userId = session.user.id;
-  const conversation = body.conversationId ? await getConversation(userId, body.conversationId) : null;
-  const settings = await getSettings(userId);
+  const [conversation, settings] = await Promise.all([
+    body.conversationId ? ensureConversation(userId, body.conversationId, "Voice session").catch(() => null) : null,
+    getSettings(userId),
+  ]);
   const result = await runTool(
     { userId, settings, source: "voice", conversationId: conversation?.id ?? null },
     body.name,

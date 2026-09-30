@@ -6,6 +6,7 @@ import { ArrowUp, Mic, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app/app-context";
+import { prefetchVoice } from "@/components/voice/voice-prefetch";
 import { cn } from "@/lib/cn";
 import { RichText } from "./rich-text";
 import { ToolPart } from "./tool-receipt";
@@ -168,6 +169,8 @@ export function ChatThread({
           <button
             type="button"
             onClick={() => setVoiceOpen(true)}
+            onPointerEnter={prefetchVoice}
+            onFocus={prefetchVoice}
             className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-parchment"
             aria-label="Talk to FinAI"
           >

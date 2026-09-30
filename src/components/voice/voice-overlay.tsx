@@ -1,6 +1,6 @@
 "use client";
 
-import { GoogleGenAI, type LiveServerMessage, type Session } from "@google/genai";
+import type { LiveServerMessage, Session } from "@google/genai";
 import { Keyboard, Mic, MicOff, PhoneOff, SendHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -8,6 +8,7 @@ import { useApp } from "@/components/app/app-context";
 import { ToolPart } from "@/components/chat/tool-receipt";
 import { cn } from "@/lib/cn";
 import { MicCapture, PcmPlayer } from "./live-audio";
+import { loadGenAI, takeVoiceToken } from "./voice-prefetch";
 
 type Phase = "connecting" | "listening" | "thinking" | "speaking" | "error" | "ended";
 type Turn = { id: string; role: "user" | "assistant"; text: string };
@@ -44,6 +45,7 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState("");
   const [connected, setConnected] = useState(false);
+  const [micBlocked, setMicBlocked] = useState(false);
 
   const conversationId = useRef(rid("voice"));
   const session = useRef<Session | null>(null);
@@ -140,56 +142,90 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/voice/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversationId: conversationId.current }),
-        });
-        const data = (await res.json()) as { token?: string; model?: string; error?: string };
-        if (!res.ok || !data.token) throw new Error(data.error ?? "Couldn't start voice.");
-        if (cancelled) return;
+    // Up to ~15 s of speech said before the socket is ready; sent the moment it is.
+    const early: string[] = [];
 
-        player.current = new PcmPlayer();
-        await player.current.resume();
+    // Audio out first, while this still counts as part of the user's tap.
+    player.current = new PcmPlayer();
+    void player.current.resume();
 
-        const ai = new GoogleGenAI({ apiKey: data.token, httpOptions: { apiVersion: "v1alpha" } });
-        session.current = await ai.live.connect({
-          model: data.model!,
-          callbacks: {
-            onmessage: onMessage,
-            onerror: () => {
-              setError("The voice connection dropped.");
-              setPhase("error");
+    const micReady = (async () => {
+      mic.current = new MicCapture();
+      await mic.current.start(
+        (b64) => {
+          if (session.current) session.current.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } });
+          else if (early.push(b64) > 150) early.shift();
+        },
+        (level) => (micLevel.current = level),
+      );
+      if (!cancelled) setPhase((p) => (p === "connecting" ? "listening" : p));
+    })().catch((e: unknown) => {
+      if (cancelled) return;
+      setMicBlocked(true);
+      setTyping(true);
+      setError(
+        e instanceof DOMException && e.name === "NotAllowedError"
+          ? "Microphone access was blocked. Allow it in your browser, or type instead."
+          : "Couldn't open the microphone. You can type instead.",
+      );
+    });
+
+    const open = async ({ promise: tok, warm, claim }: ReturnType<typeof takeVoiceToken>): Promise<void> => {
+      const [{ GoogleGenAI }, minted] = await Promise.all([
+        loadGenAI(),
+        tok.catch((e: unknown) => {
+          if (warm) return null;
+          throw e;
+        }),
+      ]);
+      if (cancelled) return;
+      claim();
+      if (!minted) return open({ ...takeVoiceToken(), warm: false });
+      const { token, model } = minted;
+      let ready = false;
+      const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
+      const s = await new Promise<Session>((resolve, reject) => {
+        ai.live
+          .connect({
+            model,
+            callbacks: {
+              onmessage: onMessage,
+              onerror: () => {
+                if (!ready) return reject(new Error("The voice connection dropped."));
+                setError("The voice connection dropped.");
+                setPhase("error");
+              },
+              onclose: () => {
+                if (!ready) return reject(new Error("Couldn't start voice."));
+                setConnected(false);
+                if (!closed.current) setPhase((p) => (p === "error" ? p : "ended"));
+              },
             },
-            onclose: () => {
-              setConnected(false);
-              if (!closed.current) setPhase((p) => (p === "error" ? p : "ended"));
-            },
-          },
-        });
-        if (cancelled) return session.current.close();
-        setConnected(true);
+          })
+          .then(resolve, reject);
+      }).catch((e: unknown) => {
+        // A warm token can go stale between prefetch and use; try once more with a fresh one.
+        if (warm && !cancelled) return null;
+        throw e;
+      });
+      if (!s) return open({ ...takeVoiceToken(), warm: false });
+      ready = true;
+      if (cancelled) return s.close();
+      session.current = s;
+      for (const b64 of early.splice(0)) s.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } });
+      setConnected(true);
+      await micReady;
+      if (!cancelled) setPhase((p) => (p === "connecting" ? "listening" : p));
+    };
 
-        mic.current = new MicCapture();
-        await mic.current.start(
-          (b64) => session.current?.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } }),
-          (level) => (micLevel.current = level),
-        );
-        setPhase("listening");
-      } catch (e) {
-        const msg =
-          e instanceof DOMException && e.name === "NotAllowedError"
-            ? "Microphone access was blocked. Allow it in your browser, or type instead."
-            : e instanceof Error
-              ? e.message
-              : "Couldn't start voice.";
-        setError(msg);
-        setPhase("error");
-        setTyping(true);
-      }
-    })();
+    open(takeVoiceToken()).catch((e: unknown) => {
+      if (cancelled) return;
+      mic.current?.stop();
+      setError(e instanceof Error ? e.message : "Couldn't start voice.");
+      setPhase("error");
+      setTyping(true);
+    });
+
     return () => {
       cancelled = true;
       closed.current = true;
@@ -255,7 +291,7 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
             {!idle && <Mic className={cn("relative size-8", phase === "speaking" ? "text-lime" : "text-ink")} strokeWidth={1.5} aria-hidden />}
           </div>
           <p className="mt-8 text-[clamp(2.25rem,5vw,3.75rem)] leading-[1] font-medium tracking-[-0.03em]" aria-live="polite">
-            {muted && phase === "listening" ? "Muted" : PHASE_LABEL[phase]}
+            {phase === "listening" && (muted || micBlocked) ? (micBlocked ? "Ready" : "Muted") : PHASE_LABEL[phase]}
           </p>
           {phase === "listening" && turns.length === 0 && !live.user && (
             <p className="mt-3 text-center text-graphite">Try &ldquo;I spent two thousand on transport this morning.&rdquo;</p>
