@@ -1,8 +1,10 @@
-import { CalendarClock, ChevronRight, Settings, Shapes, Wallet } from "lucide-react";
+import { Activity, CalendarClock, ChevronRight, Settings, Shapes, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/app/page-header";
 import { LinkPending } from "@/components/ui/link-pending";
+import { isPulseAdmin } from "@/server/pulse/admin";
+import { requireUser } from "@/server/session";
 
 export const metadata: Metadata = { title: "More" };
 
@@ -13,12 +15,16 @@ const LINKS = [
   { href: "/app/settings", label: "Settings", sub: "Profile, currency, sign in", icon: Settings },
 ];
 
-export default function MorePage() {
+const PULSE = { href: "/app/pulse", label: "Pulse", sub: "Visitors, users, errors and speed", icon: Activity };
+
+export default async function MorePage() {
+  const { user } = await requireUser();
+  const links = isPulseAdmin(user.email) ? [...LINKS, PULSE] : LINKS;
   return (
     <div className="flex flex-col gap-6 px-4 pt-4 md:px-8">
       <PageHeader title="More" />
       <ul className="flex flex-col gap-3">
-        {LINKS.map((l) => (
+        {links.map((l) => (
           <li key={l.href}>
             <Link href={l.href} className="flex items-center gap-4 rounded-[28px] bg-parchment px-5 py-5 hover:bg-[#ededdf]">
               <span className="inline-flex size-11 items-center justify-center rounded-full bg-white">

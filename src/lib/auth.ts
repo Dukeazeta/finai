@@ -7,6 +7,7 @@ import * as schema from "@/db/schema";
 import { sendEmail } from "@/server/email";
 import { seedDefaultCategories } from "@/server/finance/categories";
 import { getSettings } from "@/server/finance/settings";
+import { pulseAuthAfter, pulseAuthBefore } from "@/server/pulse/auth-events";
 import { isGoogleConfigured as googleConfigured } from "./features";
 
 export const auth = betterAuth({
@@ -51,6 +52,7 @@ export const auth = betterAuth({
       },
     },
   },
+  hooks: { before: pulseAuthBefore, after: pulseAuthAfter },
   plugins: [nextCookies()],
 });
 

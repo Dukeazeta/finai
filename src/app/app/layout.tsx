@@ -3,6 +3,7 @@ import { AppProvider } from "@/components/app/app-context";
 import { AppShell } from "@/components/app/app-shell";
 import { listAccounts } from "@/server/finance/accounts";
 import { listCategories } from "@/server/finance/categories";
+import { isPulseAdmin } from "@/server/pulse/admin";
 import { requireUser } from "@/server/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       timezone={settings.timezone}
       accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, currency: a.currency }))}
       categories={categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind, icon: c.icon }))}
+      pulseAdmin={isPulseAdmin(user.email)}
     >
       <AppShell>{children}</AppShell>
     </AppProvider>

@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -254,6 +255,80 @@ export const messages = pgTable(
   (t) => [index("messages_conversation_idx").on(t.conversationId, t.position)],
 );
 
+/* ------------------------------------------------------------------ */
+/* Pulse: first-party analytics, error tracking and speed monitoring   */
+/* ------------------------------------------------------------------ */
+
+/** One row per page view, click, speed sample, sign in or product event. Kept for 90 days. */
+export const pulseEvents = pgTable(
+  "pulse_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+    /** pageview | click | vital | event | auth */
+    kind: text("kind").notNull(),
+    /** Path for page views, element label for clicks, metric for vitals, event name otherwise. */
+    name: text("name").notNull(),
+    visitorId: text("visitor_id"),
+    sessionId: text("session_id"),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    path: text("path"),
+    value: doublePrecision("value"),
+    props: jsonb("props").$type<Record<string, unknown>>(),
+    referrer: text("referrer"),
+    country: text("country"),
+    device: text("device"),
+    browser: text("browser"),
+    os: text("os"),
+  },
+  (t) => [
+    index("pulse_events_ts_idx").on(t.ts),
+    index("pulse_events_kind_idx").on(t.kind, t.ts),
+    index("pulse_events_user_idx").on(t.userId, t.ts),
+    index("pulse_events_session_idx").on(t.sessionId),
+  ],
+);
+
+/** Errors grouped by fingerprint, the way Sentry groups events into issues. */
+export const pulseIssues = pgTable(
+  "pulse_issues",
+  {
+    id: text("id").primaryKey(),
+    /** client | server */
+    source: text("source").notNull(),
+    name: text("name").notNull(),
+    message: text("message").notNull(),
+    culprit: text("culprit"),
+    /** open | resolved | ignored */
+    status: text("status").notNull().default("open"),
+    count: integer("count").notNull().default(0),
+    firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
+    lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("pulse_issues_last_seen_idx").on(t.status, t.lastSeen)],
+);
+
+/** Each time an issue happened, with its stack and context. Kept for 90 days. */
+export const pulseErrors = pgTable(
+  "pulse_errors",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    issueId: text("issue_id")
+      .notNull()
+      .references(() => pulseIssues.id, { onDelete: "cascade" }),
+    ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    visitorId: text("visitor_id"),
+    sessionId: text("session_id"),
+    path: text("path"),
+    stack: text("stack"),
+    props: jsonb("props").$type<Record<string, unknown>>(),
+    browser: text("browser"),
+    os: text("os"),
+  },
+  (t) => [index("pulse_errors_issue_idx").on(t.issueId, t.ts), index("pulse_errors_ts_idx").on(t.ts)],
+);
+
 /* Relations used by the query builder */
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -285,3 +360,5 @@ export type MoneyAccount = typeof moneyAccounts.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
+export type PulseEvent = typeof pulseEvents.$inferSelect;
+export type PulseIssue = typeof pulseIssues.$inferSelect;

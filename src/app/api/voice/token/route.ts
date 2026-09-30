@@ -2,6 +2,7 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { hasGeminiKey, LIVE_MODEL, liveFunctionDeclarations } from "@/server/ai/model";
 import { buildInstructions } from "@/server/ai/prompt";
 import { getSettings } from "@/server/finance/settings";
+import { recordError, recordEvent } from "@/server/pulse/record";
 import { getSession } from "@/server/session";
 
 /**
@@ -16,6 +17,7 @@ export async function POST() {
   if (!hasGeminiKey()) return Response.json({ error: "Voice is not configured yet. Add GEMINI_API_KEY." }, { status: 503 });
 
   const userId = session.user.id;
+  const started = Date.now();
   const settings = await getSettings(userId);
   const instructions = await buildInstructions(userId, session.user.name, settings, "voice");
 
@@ -40,9 +42,11 @@ export async function POST() {
       },
     });
     if (!token.name) throw new Error("No token returned");
+    recordEvent({ kind: "event", name: "voice_token", userId, path: "/api/voice/token", value: Date.now() - started });
     return Response.json({ token: token.name, model: LIVE_MODEL });
   } catch (e) {
     console.error("voice token error", e);
+    recordError(e, { path: "/api/voice/token", userId });
     return Response.json({ error: "Couldn't start a voice session. Try again in a moment." }, { status: 502 });
   }
 }

@@ -13,6 +13,8 @@ type Ctx = {
   timezone: string;
   accounts: AppAccount[];
   categories: AppCategory[];
+  /** Can open Pulse, the built-in monitoring area. */
+  pulseAdmin: boolean;
   txForm: { open: boolean; tx: EditableTx | null; defaults?: Partial<EditableTx> };
   openTxForm: (tx?: EditableTx | null, defaults?: Partial<EditableTx>) => void;
   closeTxForm: () => void;
@@ -31,7 +33,8 @@ export function AppProvider({
   timezone,
   accounts,
   categories,
-}: Pick<Ctx, "user" | "baseCurrency" | "timezone" | "accounts" | "categories"> & { children: ReactNode }) {
+  pulseAdmin,
+}: Pick<Ctx, "user" | "baseCurrency" | "timezone" | "accounts" | "categories" | "pulseAdmin"> & { children: ReactNode }) {
   const [txForm, setTxForm] = useState<Ctx["txForm"]>({ open: false, tx: null });
   const [askOpen, setAskOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -43,8 +46,8 @@ export function AppProvider({
   const closeTxForm = useCallback(() => setTxForm((s) => ({ ...s, open: false })), []);
 
   const value = useMemo(
-    () => ({ user, baseCurrency, timezone, accounts, categories, txForm, openTxForm, closeTxForm, askOpen, setAskOpen, voiceOpen, setVoiceOpen }),
-    [user, baseCurrency, timezone, accounts, categories, txForm, openTxForm, closeTxForm, askOpen, voiceOpen],
+    () => ({ user, baseCurrency, timezone, accounts, categories, pulseAdmin, txForm, openTxForm, closeTxForm, askOpen, setAskOpen, voiceOpen, setVoiceOpen }),
+    [user, baseCurrency, timezone, accounts, categories, pulseAdmin, txForm, openTxForm, closeTxForm, askOpen, voiceOpen],
   );
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   CalendarClock,
   House,
   LogOut,
@@ -49,6 +50,7 @@ function isActive(pathname: string, item: NavItem) {
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
+const PULSE: NavItem = { href: "/app/pulse", label: "Pulse", icon: Activity };
 const MORE: NavItem = { href: "/app/more", label: "More", icon: Menu };
 const MOBILE: NavItem[] = [PRIMARY[0], PRIMARY[2], PRIMARY[1], PRIMARY[3], MORE];
 
@@ -78,7 +80,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [going, setGoing] = useState<{ from: string; to: string } | null>(null);
   const pathname = going && going.from === realPath ? going.to : realPath;
   const onGo = (href: string) => href !== realPath && setGoing({ from: realPath, to: href });
-  const { user, accounts, categories, openTxForm, setAskOpen, setVoiceOpen } = useApp();
+  const { user, accounts, categories, pulseAdmin, openTxForm, setAskOpen, setVoiceOpen } = useApp();
+  const secondary = pulseAdmin ? [...SECONDARY, PULSE] : SECONDARY;
   const onChat = realPath.startsWith("/app/chat");
 
   // Voice tokens carry the account and category lists, so mint a fresh one whenever those change.
@@ -112,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink key={item.href} item={item} pathname={pathname} onGo={onGo} />
           ))}
           <p className="eyebrow mt-6 mb-2 px-4 text-graphite">Manage</p>
-          {SECONDARY.map((item) => (
+          {secondary.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} onGo={onGo} />
           ))}
         </nav>
@@ -172,7 +175,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="fixed inset-x-3 bottom-3 z-30 flex h-[68px] items-center justify-around rounded-full border border-ash bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           {MOBILE.map((item) => {
-            const active = item === MORE ? [...SECONDARY, PRIMARY[4], MORE].some((s) => isActive(pathname, s)) : isActive(pathname, item);
+            const active = item === MORE ? [...secondary, PRIMARY[4], MORE].some((s) => isActive(pathname, s)) : isActive(pathname, item);
             const isChat = item.href === "/app/chat";
             const label = isChat ? "Ask FinAI" : item.label;
             return (

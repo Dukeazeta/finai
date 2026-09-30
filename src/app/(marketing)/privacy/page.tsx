@@ -17,6 +17,21 @@ export default function PrivacyPage() {
         <li>Your main currency and timezone.</li>
       </ul>
 
+      <h2>How we see what&apos;s working</h2>
+      <p>
+        FinAI has its own built-in analytics and error tracking. It runs on our servers and nothing is sent to an outside analytics company. It
+        records:
+      </p>
+      <ul>
+        <li>Pages you open, buttons you press and how fast pages load. Amounts are masked before they leave your browser.</li>
+        <li>Sign ins, sign ups and failed sign in attempts, with your country and the type of device and browser.</li>
+        <li>Errors in the app, so we can fix them, and how long voice and chat take to respond.</li>
+      </ul>
+      <p>
+        It uses a random id kept in your browser instead of cookies, and never records what you type. We delete this data after 90 days, and all
+        of it is removed with your account.
+      </p>
+
       <h2>Who else handles it</h2>
       <ul>
         <li>Google processes the messages and audio you send to the assistant through the Gemini API so it can understand and reply.</li>

@@ -39,6 +39,19 @@ node scripts/seed-dev.mjs
 | `GEMINI_CHAT_MODEL` | Chat model, e.g. `gemini-3.8-flash` |
 | `GEMINI_LIVE_MODEL` | Voice model, e.g. `gemini-3.1-flash-live-preview` |
 | `RESEND_API_KEY`, `EMAIL_FROM` | Optional. Without them, password reset links are printed to the server log |
+| `PULSE_ADMINS` | Emails (comma separated) that can open Pulse at `/app/pulse` |
+| `CRON_SECRET` | Protects the daily Pulse clean-up job. Vercel Cron sends it automatically |
+
+## Pulse (built-in monitoring)
+
+Pulse is FinAI's own analytics, error tracking and speed monitoring. It stores everything in the same Postgres database, so there is no outside service to pay for or sign in to.
+
+- **Collects:** page views, clicks (amounts masked), Core Web Vitals and browser errors from `src/components/pulse/pulse-tracker.tsx`; server errors from `src/instrumentation.ts`; sign ins, sign ups and failed attempts from Better Auth hooks; AI chat and voice timings from the API routes.
+- **Stores:** `pulse_events`, plus `pulse_issues` and `pulse_errors`, where errors are grouped Sentry style by a fingerprint of name, message and top stack frame.
+- **Shows:** `/app/pulse` has Overview, Users, Activity, Errors and Speed. Only emails in `PULSE_ADMINS` can open it; everyone else gets a 404.
+- **Alerts:** new error issues are emailed to the admins when `RESEND_API_KEY` is set.
+- **Retention:** a daily Vercel Cron (`/api/pulse/cleanup`) deletes events and error occurrences older than 90 days.
+- **Opt out:** run `localStorage.pulse_off = "1"` in a browser to stop tracking it. Visits to Pulse itself never count as traffic.
 
 ## Checks
 

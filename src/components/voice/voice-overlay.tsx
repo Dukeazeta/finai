@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app/app-context";
 import { ToolPart } from "@/components/chat/tool-receipt";
 import { cn } from "@/lib/cn";
+import { pulse } from "@/lib/pulse";
 import { MicCapture, PcmPlayer } from "./live-audio";
 import { loadGenAI, takeVoiceToken } from "./voice-prefetch";
 
@@ -56,6 +57,7 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
   const pending = useRef({ user: "", assistant: "" });
   const unsaved = useRef<Turn[]>([]);
   const closed = useRef(false);
+  const turnCount = useRef(0);
 
   const flushTranscript = useCallback(async () => {
     const batch = unsaved.current.splice(0);
@@ -76,6 +78,7 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
     pending.current = { user: "", assistant: "" };
     setLive({ user: "", assistant: "" });
     if (add.length) {
+      turnCount.current += add.length;
       setTurns((t) => [...t, ...add]);
       unsaved.current.push(...add);
       void flushTranscript();
@@ -142,6 +145,8 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     let cancelled = false;
+    const t0 = performance.now();
+    const stats = { warm: false, micMs: null as number | null, readyMs: null as number | null, failed: null as string | null };
     // Up to ~15 s of speech said before the socket is ready; sent the moment it is.
     const early: string[] = [];
 
@@ -158,9 +163,11 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
         },
         (level) => (micLevel.current = level),
       );
+      stats.micMs = Math.round(performance.now() - t0);
       if (!cancelled) setPhase((p) => (p === "connecting" ? "listening" : p));
     })().catch((e: unknown) => {
       if (cancelled) return;
+      stats.failed = e instanceof DOMException ? `mic:${e.name}` : "mic";
       setMicBlocked(true);
       setTyping(true);
       setError(
@@ -212,6 +219,9 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
       ready = true;
       if (cancelled) return s.close();
       session.current = s;
+      stats.warm = warm;
+      stats.readyMs = Math.round(performance.now() - t0);
+      pulse.track("voice_ready", { warm, micMs: stats.micMs, buffered: early.length }, stats.readyMs);
       for (const b64 of early.splice(0)) s.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } });
       setConnected(true);
       await micReady;
@@ -220,6 +230,8 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
 
     open(takeVoiceToken()).catch((e: unknown) => {
       if (cancelled) return;
+      stats.failed = "connect";
+      pulse.error(e, { where: "voice connect" });
       mic.current?.stop();
       setError(e instanceof Error ? e.message : "Couldn't start voice.");
       setPhase("error");
@@ -227,6 +239,14 @@ function VoiceSession({ onClose }: { onClose: () => void }) {
     });
 
     return () => {
+      // StrictMode's instant remount in dev isn't a real session.
+      if (performance.now() - t0 > 250) {
+        pulse.track(
+          "voice_session",
+          { warm: stats.warm, micMs: stats.micMs, readyMs: stats.readyMs, turns: turnCount.current, failed: stats.failed },
+          Math.round((performance.now() - t0) / 1000),
+        );
+      }
       cancelled = true;
       closed.current = true;
       mic.current?.stop();

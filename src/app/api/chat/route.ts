@@ -13,6 +13,7 @@ import { ensureConversation, loadMessages, renameConversation, saveMessages } fr
 import { chatModel, chatTools, hasGeminiKey } from "@/server/ai/model";
 import { errorMessage } from "@/server/finance/errors";
 import { getSettings } from "@/server/finance/settings";
+import { recordError, recordEvent } from "@/server/pulse/record";
 import { getSession } from "@/server/session";
 
 export const maxDuration = 60;
@@ -55,12 +56,37 @@ export async function POST(req: Request) {
     history = [message];
   }
 
+  const started = Date.now();
+  let firstChunkMs: number | null = null;
   const result = streamText({
     model: chatModel(),
     instructions: await buildInstructions(userId, session.user.name, settings, "text"),
     messages: await convertToModelMessages(history.filter((m) => m.role !== "system")),
     tools,
     stopWhen: isStepCount(8),
+    onChunk: () => {
+      firstChunkMs ??= Date.now() - started;
+    },
+    onFinish: ({ totalUsage, steps, finishReason }) => {
+      recordEvent({
+        kind: "event",
+        name: "ai_chat",
+        userId,
+        path: "/api/chat",
+        value: Date.now() - started,
+        props: {
+          firstChunkMs,
+          inputTokens: totalUsage.inputTokens ?? null,
+          outputTokens: totalUsage.outputTokens ?? null,
+          steps: steps.length,
+          tools: steps.flatMap((s) => s.toolCalls.map((c) => c.toolName)).join(",") || null,
+          finishReason,
+        },
+      });
+    },
+    onError: ({ error }) => {
+      recordError(error, { path: "/api/chat", userId, props: { where: "chat stream" } });
+    },
   });
 
   result.consumeStream();
