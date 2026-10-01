@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { HideToggle } from "@/components/app/hide-toggle";
 import { PageHeader } from "@/components/app/page-header";
+import { Amount } from "@/components/ui/amount";
 import { localDateParts, periodRange } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { getBudgetProgress } from "@/server/finance/budgets";
@@ -23,10 +25,22 @@ export default async function BudgetsPage() {
       <PageHeader
         title="Budgets"
         description={
-          budgets.length
-            ? `${formatMoney(totalSpent, settings.baseCurrency)} of ${formatMoney(totalLimit, settings.baseCurrency)} used in ${monthName}.`
-            : "Monthly limits for the categories you care about."
+          budgets.length ? (
+            <>
+              <Amount group="budgets" currency={settings.baseCurrency}>
+                {formatMoney(totalSpent, settings.baseCurrency)}
+              </Amount>{" "}
+              of{" "}
+              <Amount group="budgets" currency={settings.baseCurrency}>
+                {formatMoney(totalLimit, settings.baseCurrency)}
+              </Amount>{" "}
+              used in {monthName}.
+            </>
+          ) : (
+            "Monthly limits for the categories you care about."
+          )
         }
+        actions={budgets.length ? <HideToggle group="budgets" /> : undefined}
       />
       <BudgetsView
         budgets={budgets.map((b) => ({ id: b.id, categoryId: b.categoryId, name: b.name, icon: b.icon, limitMinor: b.limitMinor, spentMinor: b.spentMinor }))}

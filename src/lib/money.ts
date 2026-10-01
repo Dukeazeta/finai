@@ -122,3 +122,15 @@ export function formatSigned(minor: number, currency: string, type: "income" | "
   if (type === "expense") return `−${base}`;
   return base;
 }
+
+export const MASK = "••••";
+
+/** What a hidden amount looks like: the currency symbol stays, the digits don't ("₦••••"). */
+export function maskMoney(currency: string, sign?: "+" | "−"): string {
+  const info = currencyInfo(currency);
+  const symbol =
+    new Intl.NumberFormat(info.locale, { style: "currency", currency: info.code, currencyDisplay: "narrowSymbol" })
+      .formatToParts(0)
+      .find((p) => p.type === "currency")?.value ?? info.code;
+  return `${sign ?? ""}${symbol}${MASK}`;
+}

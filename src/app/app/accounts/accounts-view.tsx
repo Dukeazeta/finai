@@ -3,6 +3,8 @@
 import { Banknote, CreditCard, Landmark, PiggyBank, Plus, Smartphone, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { HideToggle } from "@/components/app/hide-toggle";
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Input, Select } from "@/components/ui/field";
 import { Money } from "@/components/ui/money";
@@ -43,11 +45,17 @@ export function AccountsView({ accounts, baseCurrency }: { accounts: AccountRow[
     <>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="flex flex-col justify-between gap-8 rounded-[28px] bg-charcoal p-6 text-white sm:p-8 lg:row-span-2">
-          <p className="eyebrow text-ash">
-            Across {active.length} {active.length === 1 ? "account" : "accounts"}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="eyebrow text-ash">
+              Across {active.length} {active.length === 1 ? "account" : "accounts"}
+            </p>
+            <HideToggle group="accounts" tone="dark" />
+          </div>
           <div>
-            <p className="text-[clamp(3rem,6vw,4.5rem)] leading-[0.9] font-medium tracking-[-0.03em]">{formatMoney(total, baseCurrency)}</p>
+            <p className="text-[clamp(3rem,6vw,4.5rem)] leading-[0.9] font-medium tracking-[-0.03em]"><Amount group="accounts" currency={baseCurrency}>
+                {formatMoney(total, baseCurrency)}
+              </Amount>
+            </p>
             <p className="mt-3 text-[14px] text-ash">Balances update from every entry you log.</p>
             <Button
               className="mt-8"
@@ -86,9 +94,13 @@ export function AccountsView({ accounts, baseCurrency }: { accounts: AccountRow[
                 </div>
               </div>
               <div>
-                <Money minor={a.balanceMinor} currency={a.currency} className="text-[28px] font-medium tracking-[-0.03em]" />
+                <Money minor={a.balanceMinor} currency={a.currency} group="accounts" className="text-[28px] font-medium tracking-[-0.03em]" />
                 {a.currency !== baseCurrency && a.baseBalanceMinor != null && (
-                  <div className="text-[13px] text-graphite">About {formatMoney(a.baseBalanceMinor, baseCurrency)}</div>
+                  <div className="text-[13px] text-graphite">About{" "}
+                    <Amount group="accounts" currency={baseCurrency}>
+                      {formatMoney(a.baseBalanceMinor, baseCurrency)}
+                    </Amount>
+                  </div>
                 )}
               </div>
             </button>

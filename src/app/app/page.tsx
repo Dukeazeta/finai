@@ -3,8 +3,10 @@ import Link from "next/link";
 import { BudgetMeterView } from "@/components/app/budget-meter";
 import { CashflowChart } from "@/components/app/cashflow-chart";
 import { Panel, PageHeader, PeriodTabs, parsePeriod } from "@/components/app/page-header";
+import { HideToggle } from "@/components/app/hide-toggle";
 import { AddButton, QuickActions } from "@/components/app/quick-actions";
 import { TxRow } from "@/components/app/tx-row";
+import { Amount } from "@/components/ui/amount";
 import { ArrowLink } from "@/components/ui/button";
 import { CategoryIcon } from "@/components/ui/category-icon";
 import { LinkPending } from "@/components/ui/link-pending";
@@ -75,9 +77,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <section className="grid grid-cols-1 gap-8 rounded-[28px] bg-lime p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <p className="eyebrow">{summary.netMinor >= 0 ? "Left over" : "Spent more than came in"}</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="eyebrow">{summary.netMinor >= 0 ? "Left over" : "Spent more than came in"}</p>
+            <div className="lg:hidden">
+              <HideToggle group="summary" tone="lime" />
+            </div>
+          </div>
           <p className="mt-3 text-[clamp(3.5rem,8vw,5.625rem)] leading-[0.89] font-medium tracking-[-0.03em]">
-            {formatMoney(Math.abs(summary.netMinor), cur)}
+            <Amount group="summary" currency={cur}>
+              {formatMoney(Math.abs(summary.netMinor), cur)}
+            </Amount>
           </p>
           <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-3">
             {[
@@ -87,17 +96,33 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             ].map(([k, v]) => (
               <div key={k}>
                 <dt className="text-[13px]">{k}</dt>
-                <dd className="tabular text-[22px] font-medium">{v}</dd>
+                <dd className="tabular text-[22px] font-medium">
+                  {k === "Kept" ? (
+                    v
+                  ) : (
+                    <Amount group="summary" currency={cur}>
+                      {v}
+                    </Amount>
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
           {spendDelta != null && prev && prev.count > 0 && spendDelta !== 0 && (
             <p className="mt-4 text-[14px]">
-              {formatMoney(Math.abs(spendDelta), cur)} {spendDelta > 0 ? "more" : "less"} spent than the period before.
+              <Amount group="summary" currency={cur}>
+                {formatMoney(Math.abs(spendDelta), cur)}
+              </Amount>{" "}
+              {spendDelta > 0 ? "more" : "less"} spent than the period before.
             </p>
           )}
         </div>
-        <QuickActions onLime />
+        <div className="flex flex-col items-start gap-4 lg:items-end">
+          <div className="hidden lg:block">
+            <HideToggle group="summary" tone="lime" />
+          </div>
+          <QuickActions onLime />
+        </div>
       </section>
 
       {empty ? (
@@ -167,19 +192,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 )}
               </Panel>
 
-              <Panel eyebrow="Balances" title="Accounts" action={<ArrowLink href="/app/accounts">Manage</ArrowLink>}>
+              <Panel
+                eyebrow="Balances"
+                title="Accounts"
+                action={
+                  <div className="flex shrink-0 items-center gap-3">
+                    <HideToggle group="accounts" />
+                    <ArrowLink href="/app/accounts">Manage</ArrowLink>
+                  </div>
+                }
+              >
                 <ul className="flex flex-col gap-3">
                   {balances.map((a) => (
                     <li key={a.id} className="flex items-center justify-between gap-3 text-[15px]">
                       <span className="truncate">{a.name}</span>
-                      <Money minor={a.balanceMinor} currency={a.currency} className="font-medium" />
+                      <Money minor={a.balanceMinor} currency={a.currency} group="accounts" className="font-medium" />
                     </li>
                   ))}
                 </ul>
                 {balances.length > 1 && (
                   <div className="mt-4 flex items-center justify-between border-t border-ash pt-4 text-[15px]">
                     <span className="text-graphite">Total</span>
-                    <Money minor={total} currency={cur} className="font-medium" />
+                    <Money minor={total} currency={cur} group="accounts" className="font-medium" />
                   </div>
                 )}
               </Panel>

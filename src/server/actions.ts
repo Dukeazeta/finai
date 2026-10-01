@@ -15,7 +15,8 @@ import { deleteBudget, setBudget } from "@/server/finance/budgets";
 import { createCategory, updateCategory } from "@/server/finance/categories";
 import { errorMessage, FinanceError } from "@/server/finance/errors";
 import { createRecurring, deleteRecurring, markRecurringPaid, updateRecurring } from "@/server/finance/recurring";
-import { getSettings, updateSettings } from "@/server/finance/settings";
+import { HIDE_GROUP_KEYS, type HideGroup } from "@/lib/hide-groups";
+import { getSettings, setHiddenAmounts as storeHiddenAmounts, updateSettings } from "@/server/finance/settings";
 import {
   createTransaction,
   restoreTransaction,
@@ -99,6 +100,18 @@ export async function saveSettings(input: { baseCurrency: string; timezone: stri
     await updateSettings(userId, { baseCurrency: parsed.data.baseCurrency, timezone: parsed.data.timezone });
     await db.update(user).set({ name: parsed.data.name, updatedAt: new Date() }).where(eq(user.id, userId));
   });
+}
+
+/** Hides or shows amounts for some areas. No page refresh: masking happens in the browser. */
+export async function setHiddenAmounts(groups: HideGroup[], hidden: boolean): Promise<ActionResult<{ hiddenAmounts: string[] }>> {
+  const parsed = z.array(z.enum(HIDE_GROUP_KEYS)).min(1).max(HIDE_GROUP_KEYS.length).safeParse(groups);
+  if (!parsed.success || typeof hidden !== "boolean") return { ok: false, error: "Bad request." };
+  try {
+    const hiddenAmounts = await storeHiddenAmounts(await uid(), parsed.data, hidden);
+    return { ok: true, data: { hiddenAmounts } };
+  } catch (e) {
+    return { ok: false, error: errorMessage(e) };
+  }
 }
 
 export async function deleteMyAccount(confirmText: string): Promise<ActionResult> {

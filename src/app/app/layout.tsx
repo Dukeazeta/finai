@@ -19,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, currency: a.currency }))}
       categories={categories.map((c) => ({ id: c.id, name: c.name, kind: c.kind, icon: c.icon }))}
       pulseAdmin={isPulseAdmin(user.email)}
+      hiddenAmounts={settings.hiddenAmounts}
     >
       <AppShell>{children}</AppShell>
     </AppProvider>

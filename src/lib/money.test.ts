@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertMinor, formatMoney, formatSigned, parseAmount, toMajor, toMinor } from "./money";
+import { convertMinor, formatMoney, formatSigned, maskMoney, parseAmount, toMajor, toMinor } from "./money";
 
 describe("parseAmount", () => {
   it.each([
@@ -66,5 +66,12 @@ describe("formatting", () => {
   it("signs transaction amounts", () => {
     expect(formatSigned(450000, "NGN", "expense")).toBe("−₦4,500");
     expect(formatSigned(35000000, "NGN", "income")).toBe("+₦350,000");
+  });
+});
+
+describe("hiding amounts", () => {
+  it("keeps the currency symbol and drops the digits", () => {
+    expect(maskMoney("NGN")).toBe("₦••••");
+    expect(maskMoney("USD", "−")).toBe("−$••••");
   });
 });

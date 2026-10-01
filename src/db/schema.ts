@@ -104,6 +104,8 @@ export const userSettings = pgTable("user_settings", {
   locale: text("locale").notNull().default("en-NG"),
   timezone: text("timezone").notNull().default("Africa/Lagos"),
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+  /** Areas whose amounts are masked (see src/lib/hide-groups.ts). Synced across devices. */
+  hiddenAmounts: text("hidden_amounts").array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

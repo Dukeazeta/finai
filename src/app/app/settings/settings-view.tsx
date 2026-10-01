@@ -8,6 +8,7 @@ import { Field, FormError, Input, Select } from "@/components/ui/field";
 import { authClient } from "@/lib/auth-client";
 import { CURRENCIES } from "@/lib/currencies";
 import { deleteMyAccount, saveSettings } from "@/server/actions";
+import { PrivacyPanel } from "./privacy-panel";
 
 const ZONES = ["Africa/Lagos", "Africa/Accra", "Africa/Nairobi", "Africa/Johannesburg", "Europe/London", "Europe/Berlin", "America/New_York", "America/Toronto", "America/Los_Angeles", "Asia/Dubai", "UTC"];
 
@@ -94,6 +95,7 @@ export function SettingsView({
       </Panel>
 
       <div className="flex flex-col gap-3">
+        <PrivacyPanel />
         <Panel eyebrow="Sign in" title="How you log in">
           <ul className="flex flex-col divide-y divide-ash text-[15px]">
             <li className="flex items-center justify-between gap-3 py-3">

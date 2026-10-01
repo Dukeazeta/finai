@@ -15,6 +15,13 @@
       "when": 1790795326182,
       "tag": "0001_pulse",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790873948748,
+      "tag": "0002_hidden_amounts",
+      "breakpoints": true
     }
   ]
 }

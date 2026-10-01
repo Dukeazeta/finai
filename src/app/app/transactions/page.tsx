@@ -1,6 +1,8 @@
 import { ChevronDown, Download, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HideToggle } from "@/components/app/hide-toggle";
+import { Amount } from "@/components/ui/amount";
 import { EmptyState, PageHeader, PeriodTabs, parsePeriod } from "@/components/app/page-header";
 import { AddButton } from "@/components/app/quick-actions";
 import { buttonClass } from "@/components/ui/button";
@@ -61,17 +63,30 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         description={
           shown.length ? (
             <>
-              <span className="tabular">{formatMoney(totalIn, settings.baseCurrency)}</span> in,{" "}
-              <span className="tabular">{formatMoney(totalOut, settings.baseCurrency)}</span> out
+              <span className="tabular">
+                <Amount group="summary" currency={settings.baseCurrency}>
+                  {formatMoney(totalIn, settings.baseCurrency)}
+                </Amount>
+              </span>{" "}
+              in,{" "}
+              <span className="tabular">
+                <Amount group="summary" currency={settings.baseCurrency}>
+                  {formatMoney(totalOut, settings.baseCurrency)}
+                </Amount>
+              </span>{" "}
+              out
               {hasMore ? ` across the ${limit} shown` : ""}
             </>
           ) : undefined
         }
         actions={
+          <>
+          <HideToggle group="summary" />
           <a href={`/api/transactions/export?${new URLSearchParams({ ...filters, period })}`} className={buttonClass("outline")}>
             <Download className="size-4" strokeWidth={1.75} aria-hidden />
             Export CSV
           </a>
+          </>
         }
       />
 
